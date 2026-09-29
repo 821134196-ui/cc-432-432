@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>布卷疵点复检与退修系统</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>布卷疵点复检与退修系统</h1>
+  <span class="sub">纺织厂质检台 · SQLite 演示环境</span>
+  <div class="userbox">
+    <span>当前操作员</span>
+    <select id="userSel"></select>
+    <span id="userRole" class="muted"></span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="ledger" class="active">布卷台账</button>
+  <button data-tab="entry">检验录入</button>
+  <button data-tab="map">疵点地图</button>
+  <button data-tab="reinspect">复检队列</button>
+  <button data-tab="rework">退修进度</button>
+  <button data-tab="release">放行记录</button>
+</nav>
+
+<main>
+  <!-- ================= 布卷台账 ================= -->
+  <section class="page active" id="page-ledger">
+    <div id="ledgerReminders"></div>
+    <div class="card">
+      <div class="card-row" style="justify-content: space-between;">
+        <h2 style="margin:0">布卷台账</h2>
+        <div>
+          <select id="ledgerFilter">
+            <option value="">全部状态</option>
+          </select>
+          <button class="act ghost mini" id="ledgerRefresh">刷新</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:0; overflow:auto;">
+      <table>
+        <thead><tr>
+          <th>布卷编号</th><th>来源机台</th><th>颜色 / 染批</th>
+          <th class="num">长度(m)</th><th class="num">标称(m)</th><th class="num">幅宽(cm)</th>
+          <th>疵点分布（横向长度条）</th><th class="num">疵点</th><th>状态</th><th></th>
+        </tr></thead>
+        <tbody id="ledgerBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= 检验录入 ================= -->
+  <section class="page" id="page-entry">
+    <div class="entry-layout">
+      <div class="fixed-panel">
+        <div style="font-size:13px; color:var(--linen-deep); margin-bottom:10px;">检验录入 · 固定读数</div>
+        <label class="f" style="color:var(--linen-deep)">
+          选择布卷
+          <select id="entryBolt"></select>
+        </label>
+        <div class="live">
+          <div class="metric"><div class="k">当前米数（布卷实际长度）</div>
+            <span class="v" id="fpLength">—</span><span class="u">m</span></div>
+          <div class="metric" style="margin-bottom:0"><div class="k">幅宽</div>
+            <span class="v" id="fpWidth">—</span><span class="u">cm</span></div>
+        </div>
+        <div class="muted" style="margin-top:10px; color:var(--linen-deep)" id="fpVersion"></div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2 style="margin-top:0">检验版本</h2>
+          <div id="entryVersionBox"></div>
+          <div class="card-row">
+            <button class="act" id="openVersionBtn">开始初检（v1）</button>
+            <button class="act ghost" id="completeVersionBtn">封板提交检验</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-top:0">检验段（按米数切分）</h2>
+          <div class="card-row">
+            <label class="f">起点(m)<input type="number" id="segStart" min="0" step="0.5"></label>
+            <label class="f">终点(m)<input type="number" id="segEnd" min="0" step="0.5"></label>
+            <button class="act" id="addSegBtn" style="align-self:flex-end">添加检验段</button>
+          </div>
+          <table style="margin-top:10px">
+            <thead><tr><th>段号</th><th class="num">起(m)</th><th class="num">止(m)</th>
+              <th class="num">长度(m)</th><th>疵点</th></tr></thead>
+            <tbody id="segBody"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-top:0">疵点录入（按米数定位）</h2>
+          <div class="card-row">
+            <label class="f">所属检验段<select id="defSeg"></select></label>
+            <label class="f">疵点类型<select id="defType"></select></label>
+            <label class="f">等级<select id="defGrade">
+              <option value="">默认</option><option>A</option><option>B</option><option>C</option>
+            </select></label>
+            <label class="f">米数位置(m)<input type="number" id="defPos" step="0.1" min="0"></label>
+            <label class="f">疵点照片
+              <select id="defPhoto"><option value="1">附演示照片</option>
+                <option value="0">照片缺失</option></select></label>
+            <button class="act" id="addDefBtn" style="align-self:flex-end">登记疵点</button>
+          </div>
+          <table style="margin-top:10px">
+            <thead><tr><th>类型</th><th>等级</th><th class="num">位置(m)</th>
+              <th>检验段</th><th>照片</th><th>记录人</th></tr></thead>
+            <tbody id="defBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 疵点地图 ================= -->
+  <section class="page" id="page-map">
+    <div class="card">
+      <div class="card-row" style="justify-content:space-between">
+        <h2 style="margin:0">疵点地图</h2>
+        <label class="f">布卷<select id="mapBolt" style="min-width:240px"></select></label>
+      </div>
+    </div>
+    <div id="mapBody"></div>
+  </section>
+
+  <!-- ================= 复检队列 ================= -->
+  <section class="page" id="page-reinspect">
+    <div id="riReminders"></div>
+    <div class="card">
+      <div class="card-row" style="justify-content:space-between">
+        <h2 style="margin:0">复检队列</h2>
+        <div>
+          <select id="riFilter">
+            <option value="">全部</option>
+            <option value="queued">待接收</option>
+            <option value="accepted">复检中</option>
+            <option value="completed">已完成</option>
+            <option value="overdue">已超时</option>
+            <option value="cancelled">已取消</option>
+          </select>
+          <button class="act ghost mini" id="riRefresh">刷新</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:0; overflow:auto;">
+      <table>
+        <thead><tr><th>布卷</th><th>版本</th><th>检验段(m)</th>
+          <th>初检人</th><th>接收产线</th><th>期限</th><th>状态</th>
+          <th>复检人</th><th>结论</th><th>操作</th></tr></thead>
+        <tbody id="riBody"></tbody>
+      </table>
+    </div>
+    <p class="muted">规则：复检人不得与初检人相同；到期未完成自动超时并生成提醒；超时任务需主任重新派发。</p>
+  </section>
+
+  <!-- ================= 退修进度 ================= -->
+  <section class="page" id="page-rework">
+    <div class="card">
+      <h2 style="margin-top:0">退修工单</h2>
+      <table>
+        <thead><tr><th>工单号</th><th>布卷</th><th>发起版本</th><th>原因</th>
+          <th>创建时间</th><th>完工时间</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody id="rwBody"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0">对封板布卷开退修工单</h2>
+      <div class="card-row">
+        <label class="f">布卷（存在 A 级或复检确认的 B 级疵点）
+          <select id="rwBolt" style="min-width:240px"></select></label>
+        <label class="f" style="flex:1">退修原因<input id="rwReason" value="A 级疵点退修"></label>
+        <button class="act" id="rwCreateBtn" style="align-self:flex-end">开出退修工单</button>
+      </div>
+      <p class="muted">退修完工后自动生成新版本（supersedes 关联旧版本），需重新录入检验段与疵点后封板复检。</p>
+    </div>
+  </section>
+
+  <!-- ================= 放行记录 ================= -->
+  <section class="page" id="page-release">
+    <div class="card">
+      <div class="card-row" style="justify-content:space-between">
+        <h2 style="margin:0">放行条件与签发放行</h2>
+        <label class="f">待评估布卷<select id="relBolt" style="min-width:240px"></select></label>
+      </div>
+      <div id="gatesBox"></div>
+      <div class="card-row" style="margin-top:10px">
+        <label class="f"><input type="checkbox" id="concessionChk"> 长度不足经理特许</label>
+        <button class="act" id="doReleaseBtn">签发放行</button>
+        <button class="act ghost" id="doRejectBtn">经理拒收</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0; overflow:auto;">
+      <h2 style="margin:12px 14px">放行记录</h2>
+      <table>
+        <thead><tr><th>时间</th><th>布卷</th><th>版本</th><th>签发人</th>
+          <th>决定</th><th>依据</th></tr></thead>
+        <tbody id="relBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- 照片大图弹窗 -->
+<div class="modal-mask" id="photoModal">
+  <div class="modal" style="text-align:center">
+    <h3 id="photoTitle">疵点照片</h3>
+    <img id="photoImg" style="max-width:100%; border-radius:6px" alt="疵点照片">
+    <div class="actions"><button class="act ghost" onclick="closePhoto()">关闭</button></div>
+  </div>
+</div>
+
+<!-- 复检完成弹窗 -->
+<div class="modal-mask" id="riModal">
+  <div class="modal">
+    <h3>完成复检</h3>
+    <input type="hidden" id="riModalId">
+    <label class="f">复检结论
+      <select id="riResult">
+        <option value="cleared">cleared · 疵点消除/合格</option>
+        <option value="confirmed">confirmed · 疵点确认（须退修）</option>
+        <option value="escalated">escalated · 升级（须退修）</option>
+      </select></label>
+    <label class="f" style="margin-top:10px">备注<textarea id="riComment" rows="3"></textarea></label>
+    <div class="actions">
+      <button class="act ghost" onclick="closeRiModal()">取消</button>
+      <button class="act" id="riSubmitBtn">提交复检结论</button>
+    </div>
+  </div>
+</div>
+
+<!-- 退修完工弹窗 -->
+<div class="modal-mask" id="rwModal">
+  <div class="modal">
+    <h3>退修完工登记</h3>
+    <input type="hidden" id="rwModalId">
+    <p class="muted">完工后生成新版本，请指定新版本的复检/检验录入人。</p>
+    <label class="f">新版本检验录入人
+      <select id="rwInspector"></select></label>
+    <div class="actions">
+      <button class="act ghost" onclick="closeRwModal()">取消</button>
+      <button class="act" id="rwSubmitBtn">登记完工并生成新版本</button>
+    </div>
+  </div>
+</div>
+
+<div class="flash" id="flash"></div>
+<script src="/app.js"></script>
+</body>
+</html>
